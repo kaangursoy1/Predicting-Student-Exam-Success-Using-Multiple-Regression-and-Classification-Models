@@ -1,0 +1,117 @@
+import numpy as np
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from tqdm import tqdm
+
+plain_data = pd.read_csv("exams.csv")
+plain_data = plain_data
+
+#data preprocessing we need to see if variables affect the success
+#we are testing that attending recitation hour, student's wealth, gender, race, parental level
+#of education affects the average score
+plain_data['averagee'] = (plain_data['reading score'] + plain_data['math score'] + plain_data['writing score'])/3
+
+for col in plain_data.columns[0:5]:
+    sns.catplot(data=plain_data, x=col, y='averagee', kind='boxen')
+
+#since there is not enough data in race/ethnicity and there is no linear correlation in
+#parental level of education these datas can be eliminated
+plain_data = plain_data.drop(columns=['race/ethnicity','parental level of education','averagee'])
+
+#seperating data as test and training
+data = plain_data.sample(frac=0.8, random_state=25)
+test_data = plain_data.drop(data.index)
+
+#examining the relation between math score - reading score and examining math score and -
+#writing score
+'''
+#this part is for examining the data by plotting the variables
+sns.set_palette("GnBu_d")
+sns.set_style('whitegrid')
+sns.jointplot(x='writing score',y='race/ethnicity',data=plain_data)
+sns.jointplot(x='writing score',y='gender',data=plain_data)
+sns.jointplot(x='writing score',y='lunch',data=plain_data)
+sns.jointplot(x='writing score',y='test preparation course',data=plain_data)
+'''
+
+exam1 = data['reading score'].values
+exam2 = data['writing score'].values
+exam3 = data['math score'].values
+gender = data['gender'].values
+wealth = data['lunch'].values
+recitation_complete = data['test preparation course'].values
+
+k=0
+for i in gender:
+    if i == 'male':
+        gender[k]= 1
+        k+=1
+    else:
+        gender[k]= 0
+        k+=1
+
+#NOW MALE IS 1 AND FEMALE IS 0
+k=0
+for i in wealth:
+    if i == 'standard':
+        wealth[k]= 1
+        k+=1
+    else:
+        wealth[k]= 0
+        k+=1
+
+#NOW IF STUDENTS ECONOMIC SITUATION IS GOOD, IT IS 1 OTHERWISE IT IS 0
+k=0
+for i in recitation_complete:
+    if i == 'completed':
+        recitation_complete[k]= 1
+        k+=1
+    else:
+        recitation_complete[k]= 0
+        k+=1
+
+#NOW IF STUDENTS COMPLETE RECITATION HOUR, IT IS 1 OTHERWISE IT IS 0
+mean_exam1 = np.mean(exam1)
+mean_exam2 = np.mean(exam2)
+mean_exam3 = np.mean(exam3)
+mean_gender = np.mean(gender)
+mean_wealth = np.mean(wealth)
+mean_recitation_complete = np.mean(recitation_complete)
+
+my_data = (data - data.mean())/data.std()
+x = my_data.iloc[:,0:5]
+ones = np.ones([x.shape[0],1])
+x = np.concatenate((ones,x),axis=1)
+y = data.iloc[:,5:6].values
+length_y = len(y)
+
+θ = np.zeros([1,6])
+α = 0.01
+iterations = 1000
+
+def computecost_matrix(x, y, θ):
+    summationn = np.power(((x @ θ.T)-y), 2)
+    return np.sum(summationn) / (2 * len(x))
+
+def gradientDescent(x, y, θ, iterations, α):
+    cost_matrix = np.zeros(iterations)
+    for i in range(iterations):
+        θ = θ - (α/len(x)) * np.sum(x * (x @ θ.T - y), axis=0)
+        cost_matrix[i] = computecost_matrix(x, y, θ)
+    return θ, cost_matrix
+
+#running the gd and cost_matrix function
+g, cost_matrix = gradientDescent(x, y, θ, iterations, α)
+
+print('Weight are: ')
+print("")
+print(g)
+print("")
+
+minimum_cost = computecost_matrix(x, y, g)
+print('cost_matrix = ', minimum_cost)
+
+fig, ax = plt.subplots()
+ax.plot(np.arange(iterations), cost_matrix)
+plt.show()
