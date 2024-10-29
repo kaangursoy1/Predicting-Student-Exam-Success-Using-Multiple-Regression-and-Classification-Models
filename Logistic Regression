@@ -1,0 +1,186 @@
+"""
+Created on Sat Dec 17 17:33:18 2022
+@author: kaang
+"""
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+
+plain_data = pd.read_csv("exams.csv")
+data = plain_data.drop(columns=['race/ethnicity', 'parental level of education'])
+data = data.sample(frac=0.8, random_state=25)
+
+EEE_485_1 = "Kaan Gürsoy, 21704120"  # Assignment Information
+
+test_data = data.drop(data.index)
+gender = data['gender'].values
+wealth = data['lunch'].values
+recitation_complete = data['test preparation course'].values
+
+k = 0
+for i in gender:
+    if i == 'male':
+        gender[k] = 1
+        k += 1
+    else:
+        gender[k] = 0
+        k += 1
+
+# NOW MALE IS 1 AND FEMALE IS 0
+
+k = 0
+for i in wealth:
+    if i == 'standard':
+        wealth[k] = 1
+        k += 1
+    else:
+        wealth[k] = 0
+        k += 1
+
+# NOW IF STUDENTS ECONOMIC SITUATION IS GOOD, IT IS 1 OTHERWISE IT IS 0
+
+k = 0
+for i in recitation_complete:
+    if i == 'completed':
+        recitation_complete[k] = 1
+        k += 1
+    else:
+        recitation_complete[k] = 0
+        k += 1
+
+# NOW IF STUDENTS COMPLETE RECITATION HOUR, IT IS 1 OTHERWISE IT IS 0
+
+'''
+data['averagee'] = (plain_data['reading score'] + plain_data['math score'] +
+plain_data['writing score'])/3
+'''
+
+writing_score = data['writing score'].values
+
+k = 0
+l = 0
+f = 0
+
+print('Average writing score:', np.mean(writing_score))  # Average of writing score
+
+for i in writing_score:
+    if i >= 67.738:
+        writing_score[k] = 1
+        k += 1
+        l += 1
+    else:
+        writing_score[k] = 0
+        k += 1
+        f += 1
+
+# Now writing score is changed as 0 and 1. If students get a higher score than the average
+# he/she is considered successful and adjusted as 1, otherwise it's 0.
+
+print('Number of students who are below the average:', l)  # Number of students who get below the average
+print('Number of students who are above the average:', f)  # Number of students who get above the average
+
+def sigmoid_function(variables, weights):
+    sigmoid = np.dot(variables, weights)
+    return 1 / (1 + np.exp(-sigmoid))
+
+def gradient_descent_func(matrix_features, loss, outcome):
+    return np.dot(matrix_features.T, (loss - outcome)) / outcome.shape[0]
+
+def loss(loss, outcome):
+    return (-outcome * np.log(loss) - (1 - outcome) * np.log(1 - loss)).mean()
+
+def update_weight(weights, learning_perc, gradient_descent):
+    return weights - learning_perc * gradient_descent
+
+X = data[['math score', 'reading score']].copy()
+X2 = data[['math score', 'reading score']].copy()
+y = data['writing score'].copy()
+
+EEE_485_1 = "Kaan Gürsoy, 21704120"  # Assignment Information
+
+iteration = 100000
+one_matrix1 = np.ones((X.shape[0], 1))
+X = np.concatenate((one_matrix1, X), axis=1)
+θ = np.zeros(X.shape[1])
+
+for i in range(iteration):
+    sig = sigmoid_function(X, θ)
+    gradientdes = gradient_descent_func(X, sig, y)
+    θ = update_weight(θ, 0.1, gradientdes)
+
+result = sigmoid_function(X, θ)
+predicted_data = pd.DataFrame(np.around(result, decimals=3)).join(y)
+predicted_data['pred'] = predicted_data[0].apply(lambda x: 0 if x < 0.5 else 1)
+predicted_data.loc[predicted_data['pred'] == predicted_data['writing score']].shape[0] / predicted_data.shape[0] * 100
+
+writing_score2 = predicted_data['writing score'].values
+predd = predicted_data['pred'].values
+v = 0
+t = 0
+
+for i in range(len(writing_score)):
+    if writing_score[i] == predd[i]:
+        v += 1
+    else:
+        t += 1
+
+print('Accuracy of gradient descent method:', (100 * v) / (v + t))
+
+def gradient_ascent_func(X, h, y):
+    return np.dot(X.T, y - h)
+
+def MLE_function(x, y, weights):
+    z = np.dot(x, weights)
+    ll = np.sum(y * z - np.log(1 + np.exp(z)))
+    return ll
+
+def update_MLE(weight, learning_rate, gradient):
+    return weight + learning_rate * gradient
+
+one_matrix = np.ones((X2.shape[0], 1))
+X2 = np.concatenate((one_matrix, X2), axis=1)
+θ2 = np.zeros(X2.shape[1])
+
+for i in range(iteration):
+    h2 = sigmoid_function(X2, θ2)
+    gradient2 = gradient_ascent_func(X2, h2, y)
+    θ2 = update_MLE(θ2, 0.1, gradient2)
+
+result2 = sigmoid_function(X2, θ2)
+predicted_data2 = pd.DataFrame(result2).join(y)
+predicted_data2.loc[predicted_data2[0] == predicted_data2['writing score']].shape[0] / predicted_data2.shape[0] * 100
+
+for i in range(len(writing_score)):
+    if writing_score[i] == predd[i]:
+        v += 1
+    else:
+        t += 1
+
+print('Accuracy of MLE method:', (100 * v) / (v + t))
+
+X = test_data[['math score', 'reading score']].copy()
+X2 = test_data[['math score', 'reading score']].copy()
+y = test_data['writing score'].copy()
+
+one_matrix = np.ones((X2.shape[0], 1))
+X2 = np.concatenate((one_matrix, X2), axis=1)
+θ2 = np.zeros(X2.shape[1])
+
+for i in range(iteration):
+    h2 = sigmoid_function(X2, θ2)
+    gradient2 = gradient_ascent_func(X2, h2, y)
+    θ2 = update_MLE(θ2, 0.1, gradient2)
+
+result2 = sigmoid_function(X2, θ2)
+predicted_data3 = pd.DataFrame(result2).join(y)
+predicted_data3.loc[predicted_data3[0] == predicted_data3['writing score']].shape[0] / predicted_data2.shape[0] * 100
+
+for i in range(len(writing_score)):
+    if writing_score[i] == predd[i]:
+        v += 1
+    else:
+        t += 1
+
+print('Accuracy of MLE method for test data:', (100 * v) / (v + t))
